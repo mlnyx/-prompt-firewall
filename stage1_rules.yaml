@@ -1,0 +1,68 @@
+# 1단계 규칙: OWASP Top 10 for LLM 및 NeMo Guardrails 기반 정규식 룰셋
+# -----------------------------------------------------------------
+# action: 'block' -> 1단계에서 즉시 차단
+# action: 'escalate' -> 1단계에서 판단 불가, 2단계(ML)로 이관하여 위험도 판정
+
+# stage1_rules.yaml 파일에는 ALLOW 항목이 있을 필요가 없음.
+# stage1_rules.yaml 파일은 "무엇이 위험한가?" (블랙리스트/에스컬레이션 리스트)를 정의.
+
+rules:
+  - id: R1_SYS_LEAK
+    name: Block system prompt leak
+    pattern: '(?i)\b(?:(?:show|reveal|display|print|provide|give|tell(?:\s+me)?|expose|what\s+(?:is|are)|what''s)\b.*\b(?:system\s*prompt|hidden\s*(?:policy|rules?|instructions|guidelines)|internal\s*(?:instructions|policy|policies)|developer\s*message|system\s*instructions|initial\s*instructions))'
+    action: block
+    message: "Potential prompt injection: system prompt leak attempt detected."
+
+  - id: R2_POLICY_OVERRIDE
+    name: Block instruction override
+    pattern: '(?i)\b(?:ignore|disregard|override|forget|bypass)\b(?:.*\b(?:all|any|previous|prior|above|existing|the|these|those|this)\b)?\s*(?:instructions|orders|rules?|guidelines?|policies|policy|prompts?)\b'
+    action: block
+    message: "Potential prompt injection: instruction/policy override detected."
+
+  - id: R3_ROLE_PLAY
+    name: Escalate role switch
+    pattern: '(?i)\b(?:you are now|from now on\s*[,]?\s*you are|act as(?!\s*though)(?!\s*if)|pretend to be|pretend you are|assume the role of|take on the role of|play the role of|please play the role of|become)\b'
+    action: escalate
+    message: "Role-play request detected; escalating to Stage 2."
+
+  - id: R4_AUTO_EXEC
+    name: Escalate auto-execution
+    pattern: '(?i)\b(?:(?:run|execute)\b.*\b(?:code|script|program|command)|(?:open|launch)\b.*\b(?:file|program|application|app|site|website|link|url)|(?:click|follow)\b.*\b(?:link|url|hyperlink|site|website))'
+    action: escalate
+    message: "Automated execution command detected; escalating to Stage 2."
+
+  - id: R5_SENSITIVE_INFO
+    name: Block sensitive info request
+    pattern: '(?i)\b(?:(?<!\bnot\s)(?<!\bnever\s)(?<!\bdon''t\s)(?<!\bdont\s)(?:show|give|provide|reveal|share|disclose|leak|expose|tell(?:\s+me)?|send)\b.*\b(?:(?:password|passcode|api\s*key|secret\s*(?:key|token|password|code)|private\s*key|admin\s*credentials?|internal\s*(?:information|info|data|document)))|(?:(?:what\s+(?:is|are)|what''s)\b.*\b(?:(?:password|passcode|api\s*key|secret\s*(?:key|token|code)|internal\s*(?:info|information|data)))))\b'
+    action: block
+    message: "Potential prompt injection: sensitive information request detected."
+
+  - id: R6_ENCODING_TRICK
+    name: Block encoding trick
+    pattern: '(?i)\b(?:(?:base64|rot13)\b.*\b(?:decode|decrypt|encode|encrypt)|(?:encode|encrypt|decode|decrypt|translate)\b.*\b(?:base64|rot13)|\bin\s*base64\b)\b'
+    action: block
+    message: "Potential prompt injection: encoding/decoding attempt detected."
+
+  - id: R7_FULL_CONTENT
+    name: Escalate full content request
+    pattern: '(?i)\b(?:(?:show|display|provide|print|give|output)\b.*\b(?:(?:entire|full|whole|complete|original)\b.*\b(?:text|content|document|article|email|message)|verbatim|raw\s+text|raw\s+content|exactly\s+as)|no\s+summary|verbatim)\b'
+    action: escalate
+    message: "Full content output request detected; escalating to Stage 2."
+
+  - id: R8_FILTER_BYPASS
+    name: Block safety bypass
+    pattern: '(?i)\b(?:(?:bypass|circumvent|override|evade|ignore|disable|turn\s*off|deactivate|remove|eliminate)\b.*\b(?:filter|filters|firewall|safeguards?|safety|security\s*(?:measure|measures|system|protocol|feature)|protections?|moderation|guardrails|censorship|restrictions|limitations|policies|policy|content\s*filter|safe\s*mode)|jailbreak|dev\s*mode|developer\s*mode|DAN\s*mode)\b'
+    action: block
+    message: "Potential prompt injection: security filter bypass attempt detected."
+
+  - id: R9_DANGEROUS_CODE
+    name: Block dangerous code
+    pattern: '(?i)\b(?:(?:os\.system\(|subprocess|rm\s*-\s*rf|eval\(|exec\(|bash\s*-i|shutdown\s*/s|fork\s*bomb|format\s+[A-Z]:|del\s+/?\*?\.*\*))'
+    action: block
+    message: "Potential prompt injection: dangerous code execution detected."
+
+  - id: R10_EXCESSIVE_CONTENT
+    name: Escalate excessive code/links
+    pattern: '(?s)(?:```.*?```.*?```|(?:(?:https?://)\S+\s*){3,})'
+    action: escalate
+    message: "Excessive code/links detected; escalating to Stage 2."
