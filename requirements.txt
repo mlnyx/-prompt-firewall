@@ -21,3 +21,6 @@ matplotlib
 torch
 safetensors
 accelerate
+
+# 7. Hugging Face CLI (데이터셋 다운로드용)
+huggingface_hub
