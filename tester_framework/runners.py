@@ -31,10 +31,10 @@ class Stage1LocalRunner(IFilterRunner):
     def __init__(self):
         print("Loading Stage 1 Filter in runner...")
         self.filter_instance = Stage1Filter()
-        if not self.filter_instance.rules:
+        if not self.filter_instance.whitelist_rules and not self.filter_instance.blacklist_rules:
             print("Warning: No rules loaded in Stage1Filter.")
         else : 
-            print(f"{len(self.filter_instance.rules)} rules loaded successfully in runner.")    
+            print("Stage1Filter rules loaded successfully in runner.")
     def run(self, seed: Seed) -> Seed:
         """
         Stage1Filter의 filter_text()를 호출하고 S1 결과를 Seed에 저장합니다.
