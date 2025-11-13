@@ -43,7 +43,7 @@ class Stage2Scorer:
         # 3. 가중치 및 임계값 (계획서 동일)
         self.weights = {"protectai": 0.70, "sentinel": 0.30}
         self.t_low = 0.30  # 이 값 미만은 ALLOW
-        self.t_high = 0.70 # 이 값 이상은 BLOCK
+        self.t_high = 0.30 # 이 값 이상은 BLOCK
 
     def _get_score(self, model, tokenizer, text):
         """PyTorch 모델로 추론 실행 및 점수 반환"""
