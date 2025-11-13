@@ -41,7 +41,7 @@ class Stage2Scorer:
             self.models_loaded = False
 
         # 3. 가중치 및 임계값 (계획서 동일)
-        self.weights = {"protectai": 0.45, "sentinel": 0.45}
+        self.weights = {"protectai": 0.70, "sentinel": 0.30}
         self.t_low = 0.30  # 이 값 미만은 ALLOW
         self.t_high = 0.70 # 이 값 이상은 BLOCK
 
