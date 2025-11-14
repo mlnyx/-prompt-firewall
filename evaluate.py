@@ -106,26 +106,27 @@ def main():
         results_s2 = tester_s2.run_all()
         summary_s2 = process_results(results_s2, output_dir, "s2")
         
-        print("\n--- Logging REWRITE_jailbreak scores ---")
-        rewrite_scores = []
+        print("\n--- Logging ALL Stage 2 scores ---")
+        all_s2_scores = []
         for seed in results_s2:
-            # S2 결정이 REWRITE이고, 라벨이 jailbreak인 경우
-            if (getattr(seed, 's2_decision', None) == REWRITE and 
-                seed.label == MALICIOUS):
-                
-                # 1번에서 저장한 s2_risk_score 속성을 가져옴
-                score = getattr(seed, 's2_risk_score', -1.0) 
-                rewrite_scores.append(score)
+            # S2가 처리한 모든 항목(N/A 제외)
+            decision = getattr(seed, 's2_decision', 'N/A')
+            if decision != 'N/A':
+                score = getattr(seed, 's2_risk_score', -1.0)
+                all_s2_scores.append({
+                    "label": seed.label,
+                    "decision": decision,
+                    "risk_score": score
+                })
 
-        if rewrite_scores:
-            # s2_rewrite_scores.csv 파일 생성 (체크리스트 3.a)
-            rewrite_log_path = os.path.join(output_dir, "s2_rewrite_scores.csv")
-            print(f"Saving {len(rewrite_scores)} REWRITE_jailbreak scores to {rewrite_log_path}")
+        if all_s2_scores:
+            all_log_path = os.path.join(output_dir, "s2_all_scores.csv")
+            print(f"Saving {len(all_s2_scores)} S2 score results to {all_log_path}")
             
             # pandas 임포트 확인 (파일 상단에 'import pandas as pd' 필요)
-            pd.DataFrame(rewrite_scores, columns=["risk_score"]).to_csv(rewrite_log_path, index=False)
+            pd.DataFrame(all_s2_scores).to_csv(all_log_path, index=False)
         else:
-            print("No REWRITE_jailbreak found to log.")
+            print("No S2 results found to log.")
 
     # 5. 결과 출력
     print("\n=== Evaluation Summary S1 ===")
