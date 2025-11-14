@@ -105,6 +105,28 @@ def main():
         print(f"\n--- Running Stage 2 on {len(escalated_seeds)} escalated seeds ---")
         results_s2 = tester_s2.run_all()
         summary_s2 = process_results(results_s2, output_dir, "s2")
+        
+        print("\n--- Logging ALL Stage 2 scores ---")
+        all_s2_scores = []
+        for seed in results_s2:
+            # S2가 처리한 모든 항목(N/A 제외)
+            decision = getattr(seed, 's2_decision', 'N/A')
+            if decision != 'N/A':
+                score = getattr(seed, 's2_risk_score', -1.0)
+                all_s2_scores.append({
+                    "label": seed.label,
+                    "decision": decision,
+                    "risk_score": score
+                })
+
+        if all_s2_scores:
+            all_log_path = os.path.join(output_dir, "s2_all_scores.csv")
+            print(f"Saving {len(all_s2_scores)} S2 score results to {all_log_path}")
+            
+            # pandas 임포트 확인 (파일 상단에 'import pandas as pd' 필요)
+            pd.DataFrame(all_s2_scores).to_csv(all_log_path, index=False)
+        else:
+            print("No S2 results found to log.")
 
     # 5. 결과 출력
     print("\n=== Evaluation Summary S1 ===")
