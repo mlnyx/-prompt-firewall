@@ -8,65 +8,70 @@ whitelist:
     pattern: '(?i)^(summarize|explain)\b'
     action: allow
 
-# 2. 블랙리스트 (BLOCK 또는 ESCALATE)
-# (기존 R1 ~ R10 규칙)
+
 blacklist:
-  - id: R1_SYS_LEAK
-    name: Block system prompt leak
-    pattern: '(?i)\b(?:(?:show|reveal|display|print|provide|give|tell(?:\s+me)?|expose|what\s+(?:is|are)|what''s)\b.*\b(?:system\s*prompt|hidden\s*(?:policy|rules?|instructions|guidelines)|internal\s*(?:instructions|policy|policies)|developer\s*message|system\s*instructions|initial\s*instructions))'
+  - id: R1
+    name: \"Ignore Prior Instructions\"
+    pattern: '(?i)(?:\b(?:ignore|disregard|forget|ignora|brush\s+aside|disavow|break|turn\s+a\s+blind\s+eye|pay\s+no\s+attention|cast\s+aside)\b.*\b(?:instructions?|directives?|guidelines?|rules?|polic(?:y|ies)|boundaries|principles|habits?|narrative|mainstream|bonds?|restrictions?)\b|\b(?:rebegin|start\s+afresh)\b.*\b(?:ignoring|ignore)\b)'
     action: block
-    message: "Potential prompt injection: system prompt leak attempt detected."
-
-  - id: R2_POLICY_OVERRIDE
-    name: Block instruction override
-    pattern: '(?i)\b(?:ignore|disregard|override|forget|bypass)\b(?:.*\b(?:all|any|previous|prior|above|existing|the|these|those|this)\b)?\s*(?:instructions|orders|rules?|guidelines?|policies|policy|prompts?)\b'
+    message: \"Attempt to override prior instructions.\"
+  - id: R2
+    name: \"Developer Mode or DAN Activation\"
+    pattern: '(?i)\b(?:developer\s*mode|dev\s*mode|DAN\b|do\s*anything\s*now|jailbreak|unrestricted\s*mode|initiate\s+protocol\s+override)\b'
     action: block
-    message: "Potential prompt injection: instruction/policy override detected."
-
-  - id: R3_ROLE_PLAY
-    name: Escalate role switch
-    pattern: '(?i)\b(?:you are now|from now on\s*[,]?\s*you are|act as(?!\s*though)(?!\s*if)|pretend to be|pretend you are|assume the role of|take on the role of|play the role of|please play the role of|become)\b'
-    action: escalate # 'review'를 'escalate'로 변경 (2단계 이관)
-    message: "Role-play request detected; escalating to Stage 2."
-
-  - id: R4_AUTO_EXEC
-    name: Escalate auto-execution
-    pattern: '(?i)\b(?:(?:run|execute)\b.*\b(?:code|script|program|command)|(?:open|launch)\b.*\b(?:file|program|application|app|site|website|link|url)|(?:click|follow)\b.*\b(?:link|url|hyperlink|site|website))'
-    action: escalate # 'review'를 'escalate'로 변경
-    message: "Automated execution command detected; escalating to Stage 2."
-
-  - id: R5_SENSITIVE_INFO
-    name: Block sensitive info request
-    pattern: '(?i)\b(?:(?<!\bnot\s)(?<!\bnever\s)(?<!\bdon''t\s)(?<!\bdont\s)(?:show|give|provide|reveal|share|disclose|leak|expose|tell(?:\s+me)?|send)\b.*\b(?:(?:password|passcode|api\s*key|secret\s*(?:key|token|password|code)|private\s*key|admin\s*credentials?|internal\s*(?:information|info|data|document)))|(?:(?:what\s+(?:is|are)|what''s)\b.*\b(?:(?:password|passcode|api\s*key|secret\s*(?:key|token|code)|internal\s*(?:info|information|data)))))\b'
+    message: \"Attempt to enable an unrestricted or developer mode.\"
+  - id: R3
+    name: \"Bypass or Disable Safety Filters\"
+    pattern: '(?i)(?:\b(?:bypass|disable|override|skip|reconsider|pass\s+by)\b.*\b(?:safety|safeguards?|security|protections?|moderation|guardrails|censorship|content\s*filter|safe\s*mode|polic(?:y|ies)|guidelines?|rules?|protocols?|constraints?|concerns?)\b|\b(?:unfiltered|uncensored)\b|\bno\s+(?:safety|guardrails|censorship|restrictions|rules|guidelines)\b|\b(?:bypass_safety)\b)'
     action: block
-    message: "Potential prompt injection: sensitive information request detected."
-
-  - id: R6_ENCODING_TRICK
-    name: Block encoding trick
-    pattern: '(?i)\b(?:(?:base64|rot13)\b.*\b(?:decode|decrypt|encode|encrypt)|(?:encode|encrypt|decode|decrypt|translate)\b.*\b(?:base64|rot13)|\bin\s*base64\b)\b'
+    message: \"Attempt to bypass safety restrictions.\"
+  - id: R4
+    name: \"Unconstrained Role-Play\"
+    pattern: '(?i)\b(?:act as|pretend to be|roleplay as)\b.*\b(?:without (?:rules|limits|restrictions)|no (?:rules|guidelines))\b'
     action: block
-    message: "Potential prompt injection: encoding/decoding attempt detected."
-
+    message: \"Attempt to role-play without restrictions.\"
+  - id: R5
+    name: \"Reveal Hidden Instructions\"
+    pattern: '(?i)(?:\b(?:reveal|show|expose|provide|divulge|disclose|unveil|whisper|list|tell\s+me\s+about|output|describe)\b.*\b(?:secret|hidden|internal|undisclosed|previous|initial|concealed|furtive|veiled|hush-hush|banned|clandestine|guarded|withheld|unavailable|offstage|zipped\s+away|banned)\b.*\b(?:instructions?|directives?|rules?|prompts?|messages?|guidelines?|polic(?:y|ies)|biases?|truths?|secrets?|documents?|vulnerabilities|protocols?|biases|source\s+code|coding|training\s+data|design\s+secrets)\b|\b(?:reveal_secret_info|exposesecrets)\b|\b(?:never\s+made\s+public|not\s+intended\s+for\s+user\s+access)\b|\bprevious\s+instructions?\b)'
+    action: block
+    message: \"Attempt to reveal hidden or previous instructions.\"
+  - id: R6
+    name: \"Role Impersonation Format\"
+    pattern: '(?i)(?:\b(?:system|assistant|user)\s*:\b)'
+    action: block
+    message: \"Attempt to impersonate a system/user role or define malicious code context.\"
   - id: R7_FULL_CONTENT
     name: Escalate full content request
     pattern: '(?i)\b(?:(?:show|display|provide|print|give|output)\b.*\b(?:(?:entire|full|whole|complete|original)\b.*\b(?:text|content|document|article|email|message)|verbatim|raw\s+text|raw\s+content|exactly\s+as)|no\s+summary|verbatim)\b'
-    action: escalate # 'review'를 'escalate'로 변경
+    action: escalate
     message: "Full content output request detected; escalating to Stage 2."
 
   - id: R8_FILTER_BYPASS
     name: Block safety bypass
-    pattern: '(?i)\b(?:(?:bypass|circumvent|override|evade|ignore|disable|turn\s*off|deactivate|remove|eliminate)\b.*\b(?:filter|filters|firewall|safeguards?|safety|security\s*(?:measure|measures|system|protocol|feature)|protections?|moderation|guardrails|censorship|restrictions|limitations|policies|policy|content\s*filter|safe\s*mode)|jailbreak|dev\s*mode|developer\s*mode|DAN\s*mode)\b'
+    pattern: '(?i)\b(?:(?:bypass|circumvent|override|evade|ignore|disable|turn\s*off|deactivate|remove|eliminate)\b.*\b(?:firewall|safeguards?|safety|security\s*(?:measure|measures|system|protocol|feature)|protections?|moderation|guardrails|censorship|restrictions|limitations|policies|policy|content\s*filter|safe\s*mode)|jailbreak|dev\s*mode|developer\s*mode|DAN\s*mode)\b'
     action: block
     message: "Potential prompt injection: security filter bypass attempt detected."
 
   - id: R9_DANGEROUS_CODE
     name: Block dangerous code
-    pattern: '(?i)\b(?:(?:os\.system\(|subprocess|rm\s*-\s*rf|eval\(|exec\(|bash\s*-i|shutdown\s*/s|fork\s*bomb|format\s+[A-Z]:|del\s+/?\*?\.*\*))'
+    pattern: '(?i)\b(?:(?:os\.system\(|subprocess|rm\s*-\s*rf|exec\(|bash\s*-i|shutdown\s*/s|fork\s*bomb|format\s+[A-Z]:|del\s+/?\*?\.*\*))'
     action: block
     message: "Potential prompt injection: dangerous code execution detected."
 
   - id: R10_EXCESSIVE_CONTENT
     name: Escalate excessive code/links
     pattern: '(?s)(?:```.*?```.*?```|(?:(?:https?://)\S+\s*){3,})'
-    action: escalate # 'review'를 'escalate'로 변경
+    action: escalate
     message: "Excessive code/links detected; escalating to Stage 2."
+
+  - id: R11_CONCEAL
+    name: Block content concealment
+    pattern: '(?i)\b(?:(?:conceal|hide)\b.*\b(?:request|instructions?|prompt|content|filter|moderation|guardrails?)|(?:ensure|ensuring)\b.*\bremains\s*(?:hidden|secret)|keep\s+(?:it|this|everything|the\s+(?:request|content|filter))\s*(?:hidden|secret)|without\s*revealing|(?:(?:do\s*not|don''t)\s*reveal))\b'
+    action: block
+    message: "Potential prompt injection: content concealment attempt detected."
+
+  - id: R12
+    name: \"Simulated Q&A Injection\"
+    pattern: '(?i)(?:\#\s*query:|\#\s*answer:|\b(?:exploitvulnerabilities|reveal_secret_info|rebegin|do_not_follow)\s*\()'
+    action: block
+    message: \"Attempt to inject malicious Q&A format or code execution payload.\"
