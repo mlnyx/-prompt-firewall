@@ -1,34 +1,34 @@
 import pandas as pd
-from typing import List
+from typing import List, Optional
+from dataclasses import dataclass, field
 
+@dataclass
 class Seed:
-    """테스트할 개별 프롬프트(데이터)와 그 결과를 저장하는 클래스"""
-    def __init__(self, data: str, label: str):
-        self.data = data
-        self.label = label  # Ground truth (e.g., 'benign', 'jailbreak')
-        
-        # 1단계 테스트 결과 
-        self.s1_decision = None
-        self.s1_rule_id = None      
-        self.s1_message = None      
-        
-        # 2단계 테스트 결과
-        self.s2_decision = None
-        self.s2_risk_score = None
-        
-        # error 추적
-        self.error = None
-
+    """테스트할 개별 프롬프트(데이터)와 그 결과를 저장하는 데이터 클래스"""
+    data: str
+    label: str
+    
+    # 1단계 테스트 결과
+    s1_decision: Optional[str] = None
+    s1_rule_id: Optional[str] = None
+    s1_message: Optional[str] = None
+    
+    # 2단계 테스트 결과
+    s2_decision: Optional[str] = None
+    s2_risk_score: Optional[float] = None
+    
+    # 에러 추적
+    error: Optional[str] = None
 
     def __str__(self) -> str:
-        return f"Seed(label={self.label}, data='{self.data[:30]}...', api_decision={self.api_decision})"
+        return f"Seed(label={self.label}, data='{self.data[:30]}...', s1_decision={self.s1_decision}, s2_decision={self.s2_decision})"
     
     __repr__ = __str__
 
 class Population:
     """Seed 객체의 컬렉션(테스트셋)을 관리하는 클래스"""
     def __init__(self, seeds: List[Seed] = None) -> None:
-        self.seeds = seeds if seeds else []
+        self.seeds: List[Seed] = seeds if seeds else []
 
     def create_population_from_file(self, file_path: str):
         """
@@ -39,8 +39,10 @@ class Population:
             if 'text' not in df.columns or 'label' not in df.columns:
                 raise ValueError("CSV must have 'text' and 'label' columns.")
                 
-            for _, row in df.iterrows():
-                self.seeds.append(Seed(data=str(row['text']), label=str(row['label'])))
+            self.seeds = [
+                Seed(data=str(row['text']), label=str(row['label']))
+                for _, row in df.iterrows()
+            ]
             print(f"Successfully loaded {len(self.seeds)} seeds from {file_path}")
         
         except FileNotFoundError:
@@ -55,15 +57,3 @@ class Population:
 
     def __iter__(self):
         return iter(self.seeds)
-
-    
-
-    
-
-    
-
-    
-
-    
-
-

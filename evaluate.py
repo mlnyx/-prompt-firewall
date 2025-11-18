@@ -1,124 +1,105 @@
-import pandas as pd
-import os  # os 모듈 추가
-# 1. 모듈 임포트
-try:
-    from tester_framework.core import Population
-    from tester_framework.runners import Stage1LocalRunner, Stage2LocalRunner
-    from tester_framework.orchestrator import Tester
-except ImportError:
-    print("오류: 'tester_framework' 패키지를 찾을 수 없습니다.")
-    print("core.py, runners.py, orchestrator.py가 'tester_framework' 폴더에 있는지 확인하세요.")
-    exit()
+import os
+from collections import Counter
+from typing import List, Dict, Any
 
-BENIGN = "benign"
-MALICIOUS = "jailbreak"
-ALLOW = "ALLOW"
-BLOCK = "BLOCK"
-ESCALATE = "ESCALATE"
-REWRITE = "REWRITE"
+# 리팩토링된 모듈 및 설정 임포트
+from config import (
+    TEST_DATA_PATH,
+    Decision,
+    ASYMMETRIC_WEIGHTS,
+    THRESHOLD_LOW,
+    THRESHOLD_HIGH,
+)
+from tester_framework.core import Population, Seed
+from tester_framework.runners import Stage1LocalRunner, Stage2LocalRunner
+from tester_framework.orchestrator import Tester
 
-def process_results(results, output_dir, stage_name):
-    """
-    테스트 결과를 처리하고 요약 정보를 출력한다.
-    결과를 CSV 파일로 저장한다.
-    """
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
-    output_file = os.path.join(output_dir, f"evaluation_results_{stage_name}.csv")
-
-    summary = {
-        "Total Seeds": len(results),
-
-    }
-
-    decision_attr = ""
-    if stage_name == "s1":
-        decision_attr = "s1_decision"
-    elif stage_name == "s2":
-        decision_attr = "s2_decision"
+def display_config(runner_s2: Stage2LocalRunner):
+    """Stage 2 Scorer의 설정을 터미널에 출력합니다."""
+    print("\n=== Evaluation Configuration ===")
+    if runner_s2.scorer_instance and runner_s2.scorer_instance.models_loaded:
+        scorer = runner_s2.scorer_instance
+        print("--- Stage 2 Scorer Settings ---")
+        print(f"  Device: {scorer.device}")
+        print(f"  Thresholds: Low < {THRESHOLD_LOW} ({Decision.ALLOW}), High >= {THRESHOLD_HIGH} ({Decision.BLOCK})")
+        print("  Asymmetric Weights:")
+        for model, (low, high) in ASYMMETRIC_WEIGHTS.items():
+            print(f"    - {model:<10}: (Low: {low}, High: {high})")
+        print("  Model Load Status:")
+        for model, status in scorer.model_load_status.items():
+            print(f"    - {model:<10}: {'Loaded' if status else 'Failed'}")
     else:
-        raise ValueError("stage_name은 's1' 또는 's2'여야 합니다.")
+        print("--- Stage 2 Scorer Settings ---")
+        print("  Scorer or models not loaded.")
+    print("==============================")
 
-    # 결과를 종합한다.
-    for seed in results:
-        # getattr을 사용하여 동적으로 s1_decision 또는 s2_decision 값을 가져옵니다.
-        check_decision = getattr(seed, decision_attr, None)
-
-        if check_decision not in [ALLOW, ESCALATE, BLOCK, REWRITE ]:
-            continue  # 유효하지 않은 결정은 무시합니다.
-
-        summary_key = f"{check_decision}_{seed.label}"
-        if summary_key in summary:
-            summary[summary_key] += 1
-        else:
-            summary[summary_key] = 1 
-
-
-    return summary
-
-
-def main():
-    # --- 경로 설정 ---
-    # 이 스크립트 파일(evaluate.py)의 위치를 기준으로 절대 경로를 만듭니다.
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = script_dir  # evaluate.py가 프로젝트 루트에 있으므로
-
-    data_path = os.path.join(project_root, "data", "test.csv")
-    rules_path = os.path.join(project_root, "stage1_rules.yaml")
-    output_dir = os.path.join(project_root, "data")  # 결과 파일 저장 경로
-
-    # 1. 데이터 준비 (Population 생성)
-    population = Population()
-    population.create_population_from_file(data_path)
-
-    if len(population) == 0:
-        print(f"테스트할 데이터가 없습니다. '{data_path}' 파일을 확인하세요.")
-        return
-
-    # 2. 실행 전략 선택 (Runner 생성)
-    runner_s1 = Stage1LocalRunner()
-    runner_s2 = Stage2LocalRunner()
-
-    # 3. s1_테스터 생성 (Population과 Runner 주입)
-    tester_s1 = Tester(population, runner_s1)
-
-    # 4. s1_테스트 실행
-    print("--- Running Stage 1 ---")
-    results_s1 = tester_s1.run_all()
-    summary_s1 = process_results(results_s1, output_dir, "s1")
-
-    # S1에서 ESCALATE된 Seed만 필터링
-    escalated_seeds = [seed for seed in results_s1 if seed.s1_decision == ESCALATE]
+def process_results(results: List[Seed], stage: str) -> Dict[str, int]:
+    """테스트 결과를 요약합니다."""
+    summary = Counter()
+    decision_attr = f"s{stage}_decision"
     
-    # 만약 ESCALATE된 데이터가 없다면 Stage 2를 실행하지 않고 종료
+    for seed in results:
+        decision = getattr(seed, decision_attr)
+        if decision:
+            summary[f"{decision}_{seed.label}"] += 1
+            
+    summary["Total Seeds"] = len(results)
+    return dict(summary)
+
+def print_summary(stage_name: str, summary: Dict[str, int]):
+    """결과 요약을 형식에 맞게 출력합니다."""
+    print(f"\n=== Evaluation Summary {stage_name} ===")
+    if not summary:
+        print("No results to display.")
+    else:
+        for key, value in sorted(summary.items()):
+            print(f"{key}: {value}")
+    print("==========================")
+
+def run_stage1(population: Population) -> List[Seed]:
+    """Stage 1 테스트를 실행합니다."""
+    print("\n--- Running Stage 1 ---")
+    runner_s1 = Stage1LocalRunner()
+    tester_s1 = Tester(population, runner_s1)
+    return tester_s1.run_all()
+
+def run_stage2(escalated_seeds: List[Seed]) -> List[Seed]:
+    """Stage 2 테스트를 실행합니다."""
     if not escalated_seeds:
         print("\n--- No seeds escalated to Stage 2 ---")
-        summary_s2 = {}
-    else:
-        escalated_population = Population(seeds=escalated_seeds)
-
-        # 3. s2_테스터 생성 (필터링된 Population과 Runner 주입)
-        tester_s2 = Tester(escalated_population, runner_s2)
-        
-        # 4. s2_테스트 실행
-        print(f"\n--- Running Stage 2 on {len(escalated_seeds)} escalated seeds ---")
-        results_s2 = tester_s2.run_all()
-        summary_s2 = process_results(results_s2, output_dir, "s2")
-
-    # 5. 결과 출력
-    print("\n=== Evaluation Summary S1 ===")
-    for key, value in summary_s1.items():
-        print(f"{key}: {value}")
-    print("==========================")
+        return []
     
+    print(f"\n--- Running Stage 2 on {len(escalated_seeds)} escalated seeds ---")
+    escalated_population = Population(seeds=escalated_seeds)
+    runner_s2 = Stage2LocalRunner()
+    display_config(runner_s2) # S2 실행 직전에 설정 표시
+    
+    tester_s2 = Tester(escalated_population, runner_s2)
+    return tester_s2.run_all()
+
+def main():
+    """메인 평가 파이프라인"""
+    # 1. 데이터 로드
+    population = Population()
+    population.create_population_from_file(TEST_DATA_PATH)
+
+    if not population.seeds:
+        print(f"테스트할 데이터가 없습니다. '{TEST_DATA_PATH}' 파일을 확인하세요.")
+        return
+
+    # 2. Stage 1 실행 및 결과 처리
+    results_s1 = run_stage1(population)
+    summary_s1 = process_results(results_s1, stage='1')
+    
+    # 3. Stage 2 실행 및 결과 처리
+    escalated_seeds = [seed for seed in results_s1 if seed.s1_decision == Decision.ESCALATE]
+    results_s2 = run_stage2(escalated_seeds)
+    summary_s2 = process_results(results_s2, stage='2')
+
+    # 4. 최종 결과 요약 출력
+    print_summary("S1", summary_s1)
     if summary_s2:
-        print("\n=== Evaluation Summary S2 ===")
-        for key, value in summary_s2.items():
-            print(f"{key}: {value}")
-        print("==========================")
-
-    
+        print_summary("S2", summary_s2)
 
 if __name__ == "__main__":
     main()

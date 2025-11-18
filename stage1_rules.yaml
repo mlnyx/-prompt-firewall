@@ -1,13 +1,25 @@
-# 1. 화이트리스트 (즉시 ALLOW, S2 스킵)
-# 명백히 안전하고 빠른 응답이 필요한 일반 질의
+# 1. 화이트리스트 (Strict Anchoring 적용)
+# 원칙: 문장의 시작(^)과 끝($)을 제한하여 뒤에 공격 구문이 붙는 것을 원천 차단
 whitelist:
-  - id: W1_SIMPLE_Q
-    pattern: '(?i)^(what|who|when|where|why|how)\s+(is|are|to|does|do)\b'
+  #  단순 인사
+  - id: W001_GREETING
+    pattern: '(?i)^\s*(hello|hi|hey|greetings|안녕|안녕하세요|반가워)\s*[\.!]*\s*$'
     action: allow
-  - id: W2_SUMMARIZE
-    pattern: '(?i)^(summarize|explain)\b'
-    action: allow
+    message: "Simple greeting allowed"
 
+  #  단순 작업 요청
+  # 기존 W2를 강화: 뒤에 문장이 더 붙으면 매칭 실패 -> S2로 넘어감
+  - id: W002_SIMPLE_TASK
+    pattern: '(?i)^\s*(summarize|explain|rephrase|translate|요약|설명|번역)\s*(this|it|please|해줘|하세요)?\s*[\.!]*\s*$'
+    action: allow
+    message: "Simple task request allowed (No payload)"
+
+  #  짧은 정의 요청 (5단어/30자 이내 제한)
+  # 기존 W1을 강화: 문장이 길어지면 Injection 의심 -> S2로 넘어감
+  - id: W003_SHORT_DEFINITION
+    pattern: '(?i)^\s*(what|who)\s+(is|are)\s+[a-zA-Z0-9\u3131-\uD79D\s]{1,30}\??\s*$'
+    action: allow
+    message: "Short definition question allowed"
 
 blacklist:
   - id: R1

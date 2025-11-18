@@ -22,11 +22,7 @@ class Tester:
         Population의 모든 Seed에 대해 테스트를 실행합니다.
         """
         total = len(self.population)
-        print("\n" + "="*20)
-        print(f"Orchestrator: Tester")
-        print(f"Runner:       {self.runner.__class__.__name__}")
-        print(f"Population:   {total} seeds")
-        print("="*20)
+        print(f"Running test for {total} seeds with {self.runner.__class__.__name__}...")
         
         for i, seed in enumerate(self.population):
             # 1. Runner에게 Seed 실행을 위임
@@ -37,11 +33,10 @@ class Tester:
             else : 
                 self.results.append(updated_seed)
             
-            
-                
-            if (i + 1) % 100 == 0 or (i + 1) == total:
-                print(f"Processed {i + 1}/{total} seeds...")
+            # 진행 상황을 한 줄에 업데이트
+            print(f"Processed {i + 1}/{total} seeds...", end='\r')
         
-        print("\nTesting complete.")
-        print(f"Total Errors: {len(self.errors)}")
+        print(f"\nTesting complete.") # Final newline after progress bar
+        if self.errors:
+            print(f"Total Errors: {len(self.errors)}")
         return self.results
