@@ -1,23 +1,27 @@
-#1. API 서버 (프록시) [cite: 30]
+#1. API 서버 (프록시)
 fastapi
 uvicorn[standard]
 
-#2. 1단계 규칙 로딩용 [cite: 31]
+#2. 1단계 규칙 로딩용
 PyYAML
 
-#3. 1단계 정규식 라이브러리 [cite: 32]
+#3. 1단계 정규식 라이브러리
 regex
 
-#4. 2단계 모델 추론용 [cite: 33, 34]
+#4. 2단계 모델 추론용
 onnxruntime
 transformers
 
-# 5. 6단계 평가용 [cite: 65, 69]
+#5. 3단계 LLM 정화 및 의미 유사도 검증용
+sentence-transformers
+torch
+
+#6. 평가용
 pandas
 scikit-learn
 matplotlib
 
-# 6. B안: .safetensors 로드를 위한 PyTorch
-torch
+#7. .safetensors 모델 로드 지원
 safetensors
 accelerate
+jinja2

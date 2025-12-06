@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ LLM Prompt Firewall</title>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-color: #212529;
+            --primary-color: #007bff;
+            --primary-hover: #0056b3;
+            --border-color: #dee2e6;
+            --green: #28a745;
+            --red: #dc3545;
+            --yellow: #ffc107;
+            --font-sans-serif: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --font-monospace: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+        body {
+            font-family: var(--font-sans-serif);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding-top: 50px;
+            margin: 0;
+        }
+        .container {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.07);
+            width: 100%;
+            max-width: 800px;
+        }
+        h1 {
+            text-align: center;
+            color: var(--text-color);
+            margin-bottom: 2rem;
+            font-size: 2rem;
+        }
+        textarea {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+            font-size: 1rem;
+            min-height: 120px;
+            box-sizing: border-box;
+            resize: vertical;
+            transition: border-color 0.2s;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 0.85rem;
+            border: none;
+            background-color: var(--primary-color);
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            margin-top: 1.5rem;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+        #results-container {
+            margin-top: 2.5rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 1.5rem;
+            display: none;
+        }
+        .result-card {
+            background: #fdfdff;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .result-card h3 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        .flow-trace {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .flow-trace li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f2f2f2;
+        }
+        .flow-trace li:last-child {
+            border-bottom: none;
+        }
+        .final-verdict {
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.25rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
+        }
+        .final-verdict.ALLOW { background-color: rgba(40, 167, 69, 0.1); color: var(--green); }
+        .final-verdict.BLOCK { background-color: rgba(220, 53, 69, 0.1); color: var(--red); }
+        .final-verdict.REWRITTEN_AND_ALLOWED { background-color: rgba(255, 193, 7, 0.1); color: #856404; }
+        .final-output {
+            margin-top: 1rem;
+            background: #e9ecef;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: var(--font-monospace);
+            word-wrap: break-word;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: var(--primary-color);
+            animation: spin 1s ease infinite;
+            display: none;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🛡️ LLM Prompt Firewall</h1>
+    <form id="prompt-form">
+        <textarea id="prompt-input" placeholder="Analyze a prompt for security risks..."></textarea>
+        <button type="submit">Analyze Prompt</button>
+    </form>
+    <div class="spinner" id="spinner"></div>
+    <div id="results-container"></div>
+</div>
+
+<script>
+    document.getElementById('prompt-form').addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const prompt = document.getElementById('prompt-input').value;
+        const resultsContainer = document.getElementById('results-container');
+        const spinner = document.getElementById('spinner');
+
+        resultsContainer.style.display = 'none';
+        resultsContainer.innerHTML = '';
+        spinner.style.display = 'block';
+
+        try {
+            const response = await fetch('/api/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: prompt }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            renderResults(data);
+
+        } catch (error) {
+            resultsContainer.innerHTML = `<div class="result-card"><p style="color:var(--red);"><strong>Error:</strong> ${error.message}</p></div>`;
+            resultsContainer.style.display = 'block';
+        } finally {
+            spinner.style.display = 'none';
+        }
+    });
+
+    function renderResults(data) {
+        const container = document.getElementById('results-container');
+
+        // Main info card
+        const infoCard = `
+            <div class="result-card">
+                <h3>Analysis Summary</h3>
+                <p><strong>Timestamp:</strong> ${data.timestamp}</p>
+                <p><strong>Input Prompt:</strong> "${data.user_prompt}"</p>
+            </div>
+        `;
+        
+        // Analysis flow card
+        let flowItems = data.flow_trace.map(trace => `<li>➡️ ${trace}</li>`).join('');
+        const flowCard = `
+            <div class="result-card">
+                <h3>Analysis Flow</h3>
+                <ul class="flow-trace">${flowItems}</ul>
+            </div>
+        `;
+
+        // Final verdict card
+        const verdictCard = `
+            <div class="result-card">
+                <h3>Final Verdict</h3>
+                <div class="final-verdict ${data.final_decision}">${data.final_decision}</div>
+                <p><strong>Final Output:</strong></p>
+                <div class="final-output">${escapeHtml(data.final_output)}</div>
+            </div>
+        `;
+
+        container.innerHTML = infoCard + flowCard + verdictCard;
+        container.style.display = 'block';
+    }
+
+    function escapeHtml(unsafe) {
+        return unsafe
+             .replace(/&/g, "&amp;")
+             .replace(/</g, "&lt;")
+             .replace(/>/g, "&gt;")
+             .replace(/"/g, "&quot;")
+             .replace(/'/g, "&#039;");
+    }
+</script>
+
+</body>
+</html>
