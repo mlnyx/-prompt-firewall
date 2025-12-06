@@ -9,6 +9,8 @@ and semantic consistency.
 """
 
 from sentence_transformers import SentenceTransformer, util
+import requests
+import json
 
 # Import stage1_filter and stage2_scorer modules from the same core package
 from . import stage1_filter
@@ -124,18 +126,15 @@ class Stage3Rewriter:
 
     def _invoke_llm(self, user_prompt: str) -> str:
         """
-        Llama 3 8B Instruct 모델을 통한 프롬프트 재작성
+        Llama 3을 통한 실제 LLM 기반 프롬프트 재작성
+        
+        지원하는 LLM 서버:
+        1. Ollama API (http://localhost:11434/api/generate)
+        2. LM Studio API (http://localhost:1234/v1/completions)
+        3. LocalAI (http://localhost:8080/v1/completions)
         
         Step 1: 의도 분석 (Intent Analysis)
-        Step 2: 안전한 재작성 (Safe Rewriting)
-          - System Prompt 기반으로 다이어그램의 PHASE 1 구현
-          - Role: Expert AI Safety Guard
-          - Tone & Manner: Neutral, Educational, Inquisitive
-          - Negative Constraints: 위험한 의도 제거
-          - Instruction Separation: 사용자 입력을 안전한 질문으로 변환
-        
-        현재는 Llama 3 API 호출 대신 고급 시뮬레이션으로 구현되어 있습니다.
-        의미 유사도를 0.85 이상으로 유지하면서도 안전성을 확보합니다.
+        Step 2: 안전한 재작성 (Safe Rewriting via LLM)
         """
         
         # ===== Step 1: 의도 분석 =====
@@ -147,48 +146,105 @@ class Stage3Rewriter:
             'delete', 'drop', 'remove', 'execute', 'run', 'bypass', 'hack', 'crack',
             'exploit', 'attack', 'breach', 'infiltrate', 'steal', 'grab', 'extract',
             'dump', 'inject', 'payload', 'shell', 'command', 'sudo', 'root', 'admin',
-            'ddos', 'malware', 'virus', 'ransomware', 'trojan'
+            'ddos', 'malware', 'virus', 'ransomware', 'trojan', 'bomb', 'kill'
         ]
         
         prompt_lower = user_prompt.lower()
-        
-        # 위험 키워드가 포함되면 재작성 불가
         for keyword in dangerous_keywords:
             if keyword in prompt_lower:
                 print(f"[LLM] 위험 키워드 감지: '{keyword}' - 재작성 거부")
                 return "REWRITE_FAILED"
         
-        # ===== Step 2: 안전한 재작성 (Safe Rewriting) =====
-        # 의도 분석 결과를 바탕으로 교육적이고 중립적인 표현으로 변환
-        # 의미 유사도를 0.85 이상으로 유지
+        # ===== Step 2: LLM을 통한 안전한 재작성 =====
+        print(f"[LLM Step 2] LLM API 호출 중...")
         
-        print(f"[LLM Step 2] 안전한 재작성 진행...")
-        rewritten = user_prompt
+        # 시도할 LLM 서버들 (순서대로)
+        llm_servers = [
+            ("Ollama", "http://localhost:11434/api/generate", self._call_ollama_api),
+            ("LM Studio", "http://localhost:1234/v1/completions", self._call_lm_studio_api),
+            ("LocalAI", "http://localhost:8080/v1/completions", self._call_localai_api),
+        ]
         
-        # 최소한의 단어 치환 (의미 유사도 보존)
-        terms_mapping = {
-            'vulnerability': 'security aspect',
-            'evasion': 'detection and defense',
-            'malicious': 'unauthorized',
-            'exploit': 'security mechanism'
-        }
+        for server_name, url, api_func in llm_servers:
+            try:
+                print(f"  시도 중: {server_name} ({url})")
+                rewritten = api_func(user_prompt)
+                
+                if rewritten and rewritten != "REWRITE_FAILED":
+                    print(f"[LLM Step 2] {server_name}을 통한 재작성 완료")
+                    print(f"  원본: '{user_prompt}'")
+                    print(f"  재작성: '{rewritten}'")
+                    return rewritten
+                    
+            except Exception as e:
+                print(f"  {server_name} 실패: {str(e)[:80]}")
+                continue
         
-        for original, replacement in terms_mapping.items():
-            rewritten = rewritten.replace(original, replacement)
-            rewritten = rewritten.replace(original.capitalize(), replacement.capitalize())
+        print(f"[LLM] 사용 가능한 LLM 서버가 없습니다")
+        print(f"     다음 중 하나를 실행하세요:")
+        print(f"     1. Ollama: ollama serve")
+        print(f"     2. LM Studio: http://localhost:1234")
+        print(f"     3. LocalAI: http://localhost:8080")
+        return "REWRITE_FAILED"
+
+    def _call_ollama_api(self, user_prompt: str) -> str:
+        """Ollama API 호출"""
+        response = requests.post(
+            "http://localhost:11434/api/generate",
+            json={
+                "model": "llama2",
+                "prompt": f"{SYSTEM_PROMPT}\n\n<user_input>{user_prompt}</user_input>\n\nRespond with ONLY the rewritten question or REWRITE_FAILED:",
+                "stream": False,
+                "temperature": 0.3,
+            },
+            timeout=60
+        )
+        response.raise_for_status()
+        result = response.json()
+        rewritten = result.get("response", "").strip()
         
-        # 명령형/선언형을 질문형으로 변환
-        rewritten_lower = rewritten.lower()
+        if "REWRITE_FAILED" in rewritten or not rewritten:
+            return "REWRITE_FAILED"
+        return rewritten
+
+    def _call_lm_studio_api(self, user_prompt: str) -> str:
+        """LM Studio API 호출 (OpenAI 호환)"""
+        response = requests.post(
+            "http://localhost:1234/v1/completions",
+            json={
+                "model": "local-model",
+                "prompt": f"{SYSTEM_PROMPT}\n\n<user_input>{user_prompt}</user_input>\n\nRespond with ONLY the rewritten question or REWRITE_FAILED:",
+                "max_tokens": 100,
+                "temperature": 0.3,
+            },
+            timeout=60
+        )
+        response.raise_for_status()
+        result = response.json()
+        rewritten = result.get("choices", [{}])[0].get("text", "").strip()
         
-        # 이미 질문형이면 물음표만 추가
-        if rewritten_lower.startswith(('describe', 'explain', 'tell', 'what', 'how', 'why')):
-            if not rewritten.endswith('?'):
-                rewritten = rewritten + "?"
-        else:
-            # 명령형 문장을 질문으로 변환
-            rewritten = "What are " + rewritten.lower() + "?"
+        if "REWRITE_FAILED" in rewritten or not rewritten:
+            return "REWRITE_FAILED"
+        return rewritten
+
+    def _call_localai_api(self, user_prompt: str) -> str:
+        """LocalAI API 호출"""
+        response = requests.post(
+            "http://localhost:8080/v1/completions",
+            json={
+                "model": "llama2",
+                "prompt": f"{SYSTEM_PROMPT}\n\n<user_input>{user_prompt}</user_input>\n\nRespond with ONLY the rewritten question or REWRITE_FAILED:",
+                "max_tokens": 100,
+                "temperature": 0.3,
+            },
+            timeout=60
+        )
+        response.raise_for_status()
+        result = response.json()
+        rewritten = result.get("choices", [{}])[0].get("text", "").strip()
         
-        print(f"[LLM Step 2] 재작성 완료: '{user_prompt}' → '{rewritten}'")
+        if "REWRITE_FAILED" in rewritten or not rewritten:
+            return "REWRITE_FAILED"
         return rewritten
 
 
