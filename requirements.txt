@@ -1,6 +1,7 @@
 #1. API 서버 (프록시)
 fastapi
 uvicorn[standard]
+requests
 
 #2. 1단계 규칙 로딩용
 PyYAML
