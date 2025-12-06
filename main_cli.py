@@ -1,44 +1,55 @@
 # -*- coding: utf-8 -*-
 """
-Main entry point for the LLM Prompt Firewall CLI.
+LLM 프롬프트 방화벽 CLI 진입점
+
+커맨드라인 인터페이스를 통해 프롬프트 분석 기능을 제공합니다.
 """
 import argparse
+import sys
+from pathlib import Path
 
-# Import shared components and utilities
-from components import rewriter
-from firewall import firewall_pipeline
-from utils import setup_logging, log_result, format_cli_output
+# 프로젝트 루트를 경로에 추가
+sys.path.insert(0, str(Path(__file__).parent))
+
+# 공유 컴포넌트 및 유틸리티 임포트
+from prompt_firewall.utils.components import rewriter
+from prompt_firewall.core.firewall import firewall_pipeline
+from prompt_firewall.utils.utils import setup_logging, log_result, format_cli_output
 
 def main():
     """
-    Parses command-line arguments and runs the firewall pipeline.
+    CLI 메인 함수
+    
+    명령줄 인자를 파싱하고 방화벽 파이프라인을 실행합니다.
     """
+    # 인자 파서 설정
     parser = argparse.ArgumentParser(
-        description="🛡️ LLM Prompt Firewall CLI - Analyze a prompt for security risks."
+        description="LLM 프롬프트 방화벽 CLI - 프롬프트의 보안 위험도를 분석합니다."
     )
     parser.add_argument(
         "prompt", 
         type=str, 
-        help="The user prompt to analyze."
+        help="분석할 사용자 프롬프트"
     )
     args = parser.parse_args()
 
     try:
-        # Initialize logging
+        # 로깅 초기화
         setup_logging()
 
-        # Execute the pipeline using the shared rewriter instance
-        print("Analyzing prompt...")
+        # 파이프라인 실행
+        print("\n프롬프트 분석 중...\n")
         result = firewall_pipeline(args.prompt, rewriter)
 
-        # Log the result to a file and format the output for the console
+        # 결과 로깅 및 출력
         log_result(result)
         format_cli_output(result)
 
     except FileNotFoundError as e:
-        print(f"❌ [Error] A required file was not found: {e}. Please ensure all dependencies are installed.")
+        print(f"\n[오류] 필요한 파일을 찾을 수 없습니다: {e}")
+        print("모든 종속성이 설치되었는지 확인하세요.\n")
     except Exception as e:
-        print(f"💥 [Critical Error] An unexpected error occurred: {e}")
+        print(f"\n[치명적 오류] 예상치 못한 오류가 발생했습니다: {e}\n")
 
 if __name__ == "__main__":
     main()
