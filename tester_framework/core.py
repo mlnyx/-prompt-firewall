@@ -62,6 +62,19 @@ class Population:
             print(f"Error loading population: {e}")
             self.seeds = []
 
+    def save_to_csv(self, file_path: str):
+        """
+        Population의 현재 Seeds 데이터를 CSV 파일로 저장합니다.
+        저장되는 컬럼: text, label
+        """
+        try:
+            data = [{'text': seed.data, 'label': seed.label} for seed in self.seeds]
+            df = pd.DataFrame(data)
+            df.to_csv(file_path, index=False)
+            print(f"Successfully saved {len(self.seeds)} seeds to {file_path}")
+        except Exception as e:
+            print(f"Error saving population: {e}")
+
     def __len__(self):
         return len(self.seeds)
 

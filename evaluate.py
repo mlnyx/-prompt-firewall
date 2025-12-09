@@ -116,10 +116,15 @@ def main():
     results_s2 = run_stage2(escalated_seeds_s2)
     summary_s2 = process_results(results_s2, stage='2')
 
-    # 4. Stage 3 실행 및 결과 처리 (선택사항: REWRITE만 처리)
-    escalated_seeds_s3 = [seed for seed in results_s2 if hasattr(seed, 's2_decision') and seed.s2_decision == Decision.REWRITE]
-    results_s3 = run_stage3(escalated_seeds_s3, use_local_llm=args.use_llm) if escalated_seeds_s3 else []
-    summary_s3 = process_results(results_s3, stage='3') if results_s3 else {}
+
+    #stage2에서 REWRITE인 것들을 추출 stage2_rewrites.txt로 저장
+    stage2_rewrites = [seed for seed in results_s2 if seed.s2_decision == Decision.REWRITE]
+    Population(seeds=stage2_rewrites).save_to_csv("stage2_rewrites.txt")
+
+    # # 4. Stage 3 실행 및 결과 처리 (선택사항: REWRITE만 처리)
+    # escalated_seeds_s3 = [seed for seed in results_s2 if hasattr(seed, 's2_decision') and seed.s2_decision == Decision.REWRITE]
+    # results_s3 = run_stage3(escalated_seeds_s3, use_local_llm=args.use_llm) if escalated_seeds_s3 else []
+    # summary_s3 = process_results(results_s3, stage='3') if results_s3 else {}
 
     # 5. 최종 결과 요약 출력
     print_summary("S1", summary_s1)

@@ -15,7 +15,8 @@ print("Initializing shared components...")
 rewriter = Stage3Rewriter(
     model_name=REWRITER_CONFIG["similarity_model"],
     risk_threshold=REWRITER_CONFIG["risk_threshold"],
-    similarity_threshold=REWRITER_CONFIG["similarity_threshold"]
+    similarity_threshold=REWRITER_CONFIG["similarity_threshold"],
+    llama3_model_id="meta-llama/Meta-Llama-3.1-8B-Instruct"
 )
 
 print("Shared components initialization completed.")
