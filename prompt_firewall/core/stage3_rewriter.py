@@ -154,7 +154,7 @@ class Stage3Rewriter:
             print(f"[Stage 3] Warning: PyTorch/transformers 미설치: {e}")
             print(f"           다음 명령어로 설치하세요: pip install torch transformers")
         except Exception as e:
-            print(f"✗ Llama 3 모델 로드 실패: {str(e)[:100]}")
+            print(f"✗ Llama 3 모델 로드 실패: {str(e)}")
             self.llama3_model = None
 
 
