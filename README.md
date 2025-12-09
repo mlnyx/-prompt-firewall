@@ -20,7 +20,9 @@
   - 임계값에 따라 `ALLOW`, `BLOCK`, 그리고 `GRAY AREA`(회색지대)로 판정합니다.
 
 - **Stage 3: 소형 LLM 정화 모듈 (`stage3_rewriter.py`)**
-  - 2단계에서 '회색지대'로 분류된 프롬프트를 **Llama 3 8B Instruct** 모델을 사용해 안전한 교육적 질문으로 재작성(Rewrite)합니다.
+  - 2단계에서 '회색지대'로 분류된 프롬프트를 로컬 LLM(Llama, Mistral 등)을 통해 안전한 교육적 질문으로 재작성(Rewrite)합니다.
+  - 지원하는 LLM 서버: Ollama, LM Studio, LocalAI
+  - LLM 서버가 없을 경우: 폴백 모드로 기본 텍스트 변환 규칙 적용
   - **기존 1, 2단계 모듈을 재사용**하여 재작성된 텍스트의 안전성을 다시 한번 검증하고, 원본과의 **의미적 유사도**를 확인하여 의도 왜곡을 방지합니다.
 
 ## 3. 프로젝트 구조
@@ -42,7 +44,7 @@
 │   │   ├── firewall.py               # 3단계 파이프라인 조율 및 통합
 │   │   ├── stage1_filter.py          # 1단계: 규칙 기반 필터 (블랙/화이트리스트)
 │   │   ├── stage2_scorer.py          # 2단계: ML 기반 위험도 스코어러
-│   │   └── stage3_rewriter.py        # 3단계: Llama 3 기반 안전 재작성
+│   │   └── stage3_rewriter.py        # 3단계: LLM 기반 안전 재작성 (Ollama, LM Studio 등)
 │   │
 │   └── utils/
 │       ├── __init__.py
@@ -246,9 +248,29 @@ REST API 호출 시 JSON 형식의 응답을 반환합니다.
 
 **역할:** 그레이 영역 프롬프트 안전 재작성
 
-- Llama 3 8B Instruct 모델 기반 재작성
+**LLM 서버 지원:**
+
+- Ollama (http://localhost:11434): 로컬 LLM 실행 (추천)
+- LM Studio (http://localhost:1234): OpenAI 호환 API
+- LocalAI (http://localhost:8080): 로컬 AI 서버
+
+**동작 방식:**
+
+- LLM 서버 존재 시: 로컬 LLM을 통한 실제 재작성
+- LLM 서버 부재 시: 폴백 모드로 기본 텍스트 변환 규칙 적용
 - Stage 1, 2를 이용한 재작성 결과 검증
 - Sentence Transformer를 통한 의미적 유사도 검증
+
+**LLM 서버 설정 예시:**
+
+```bash
+# Ollama 설치 및 실행 (추천)
+curl -fsSL https://ollama.ai/install.sh | sh
+ollama serve
+
+# 별도 터미널에서 모델 다운로드
+ollama pull llama2  # 또는 mistral, neural-chat 등
+```
 
 ## 8. 설정 및 커스터마이징
 
@@ -276,7 +298,69 @@ python evaluate.py
 
 이를 통해 전체 파이프라인의 성능을 벤치마킹하고 분석할 수 있습니다.
 
-## 10. 주의사항 및 라이선스
+## 10. LLM 서버 설정 (Stage 3 최적화)
+
+### 10.1 Ollama를 통한 로컬 LLM 실행 (권장)
+
+Ollama는 로컬에서 다양한 오픈소스 LLM을 쉽게 실행할 수 있게 해줍니다.
+
+**설치 및 실행:**
+
+```bash
+# macOS / Linux
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Windows
+# https://ollama.ai/download에서 직접 다운로드
+
+# Ollama 시작 (별도 터미널에서 계속 실행)
+ollama serve
+
+# 모델 다운로드 (첫 실행 시)
+ollama pull llama2
+# 또는 다른 모델들:
+# ollama pull mistral
+# ollama pull neural-chat
+# ollama pull orca-mini
+```
+
+**확인:**
+
+```bash
+# Ollama API 테스트
+curl http://localhost:11434/api/tags
+```
+
+Ollama가 실행 중이면, Stage 3 Rewriter가 자동으로 감지하여 LLM 기반 재작성을 수행합니다.
+
+### 10.2 LM Studio를 통한 로컬 LLM 실행
+
+**GUI 기반 설정:**
+
+1. https://lmstudio.ai/ 에서 LM Studio 다운로드
+2. 모델 다운로드 (예: Mistral, Llama 2)
+3. "Server" 탭에서 로컬 서버 시작 (기본 포트: 1234)
+
+### 10.3 Stage 3 작동 검증
+
+LLM 서버를 실행한 후 CLI를 통해 테스트:
+
+```bash
+# Ollama가 실행 중일 때
+python main_cli.py "How do I hack the system?"
+
+# 콘솔에 다음과 같이 표시되면 LLM이 정상 작동:
+# [LLM Step 2] Ollama을 통한 재작성 완료
+```
+
+LLM 서버가 없으면 폴백 모드로 기본 텍스트 변환만 수행됩니다:
+
+```
+[LLM] LLM 서버 미발견 - 폴백 모드 활성화
+     Ollama 설치 후 다시 시도하세요: ollama serve
+```
+
+## 11. 주의사항 및 라이선스
 
 - **모델 라이선스:** 본 프로젝트에 포함된 모델들(`prompt-injection-sentinel`, `protectai-deberta-v3-base`)의 라이선스를 반드시 확인하세요.
 - **보안:** 본 방화벽은 프롬프트 인젝션 방어를 위한 보조 도구이며, 완전한 보안을 보장하지 않습니다. 항상 다층 보안 전략을 유지하세요.
