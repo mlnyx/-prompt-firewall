@@ -8,9 +8,28 @@ Stage 2: ML 기반 위험도 스코어러
 import os
 from typing import Dict, Any
 
+# PyTorch/Transformers 멀티스레딩 완전 비활성화 (데드락 방지)
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
+os.environ['NUMEXPR_NUM_THREADS'] = '1'
+
 try:
     import torch
     from transformers import AutoTokenizer, AutoModelForSequenceClassification
+    
+    # PyTorch 멀티스레딩 비활성화
+    torch.set_num_threads(1)
+    torch.set_num_interop_threads(1)
+    
+    # multiprocessing start method 설정 (macOS 데드락 방지)
+    import multiprocessing
+    try:
+        multiprocessing.set_start_method('spawn', force=True)
+    except RuntimeError:
+        pass  # 이미 설정된 경우 무시
+    
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
@@ -61,10 +80,28 @@ class Stage2Scorer:
             # 로컬 모델 확인
             if os.path.exists(path):
                 print(f"  - {name}: 로컬 모델 로드 중... ({path})")
-                tokenizer = AutoTokenizer.from_pretrained(path, trust_remote_code=True, local_files_only=True)
+                
+                # 데드락 방지를 위한 추가 설정
+                import warnings
+                warnings.filterwarnings('ignore')
+                
+                tokenizer = AutoTokenizer.from_pretrained(
+                    path, 
+                    trust_remote_code=True, 
+                    local_files_only=True
+                )
+                # Tokenizer 병렬 처리 비활성화 (데드락 방지)
+                if hasattr(tokenizer, 'is_fast') and tokenizer.is_fast:
+                    os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+                
                 model = AutoModelForSequenceClassification.from_pretrained(
-                    path, trust_remote_code=True, local_files_only=True
+                    path, 
+                    trust_remote_code=True, 
+                    local_files_only=True,
+                    torch_dtype=torch.float32,  # 명시적 dtype 설정
+                    low_cpu_mem_usage=True  # 메모리 최적화
                 ).to(self.device).eval()
+                
                 self.models[name]['tokenizer'] = tokenizer
                 self.models[name]['model'] = model
                 self.model_load_status[name] = True
@@ -72,10 +109,17 @@ class Stage2Scorer:
             else:
                 # Hugging Face에서 다운로드
                 print(f"  - {name}: Hugging Face에서 다운로드 중... ({path})")
-                tokenizer = AutoTokenizer.from_pretrained(path, trust_remote_code=True)
+                tokenizer = AutoTokenizer.from_pretrained(
+                    path, 
+                    trust_remote_code=True
+                )
                 model = AutoModelForSequenceClassification.from_pretrained(
-                    path, trust_remote_code=True
+                    path, 
+                    trust_remote_code=True,
+                    torch_dtype=torch.float32,
+                    low_cpu_mem_usage=True
                 ).to(self.device).eval()
+                
                 self.models[name]['tokenizer'] = tokenizer
                 self.models[name]['model'] = model
                 self.model_load_status[name] = True
@@ -148,7 +192,8 @@ class Stage2Scorer:
         """
         # 모델 기반 점수 계산
         score = self.predict_with_models(text)
-        print(f"[Stage 2] 모델 기반 점수: {score:.4f}")
+        # 평가 시 로그 출력 최소화 (필요 시 주석 해제)
+        # print(f"[Stage 2] 모델 기반 점수: {score:.4f}")
         
         # 점수 기반 결정 (다이어그램 기준)
         if score < THRESHOLD_LOW:  # 0.25 미만
