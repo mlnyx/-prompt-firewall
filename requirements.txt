@@ -11,11 +11,11 @@ regex
 
 #4. 2단계 모델 추론용
 onnxruntime
-transformers
+transformers>=4.36.0
 
 #5. 3단계 LLM 정화 및 의미 유사도 검증용
 sentence-transformers
-torch
+torch>=2.0.0
 
 #6. 평가용
 pandas
@@ -24,5 +24,11 @@ matplotlib
 
 #7. .safetensors 모델 로드 지원
 safetensors
-accelerate
+accelerate>=0.25.0
 jinja2
+
+#8. Llama 3 8B Instruct 로컬 추론용 (선택사항)
+# GPU 추론을 위해 다음 추가 설치 권장:
+# pip install bitsandbytes  (4-bit 양자화용)
+# pip install flash-attn     (메모리 최적화)
+bitsandbytes>=0.41.0

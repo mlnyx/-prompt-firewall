@@ -17,11 +17,21 @@ class Seed:
     s2_decision: Optional[str] = None
     s2_risk_score: Optional[float] = None
     
+    # 3단계 테스트 결과
+    s3_decision: Optional[str] = None
+    s3_rewritten_prompt: Optional[str] = None
+    s3_confidence: Optional[float] = None
+    s3_safe_score: Optional[float] = None
+    s3_similarity: Optional[float] = None
+    s3_contains_danger: Optional[bool] = None
+    s3_final_decision: Optional[str] = None
+    s3_reason: Optional[str] = None
+    
     # 에러 추적
     error: Optional[str] = None
 
     def __str__(self) -> str:
-        return f"Seed(label={self.label}, data='{self.data[:30]}...', s1_decision={self.s1_decision}, s2_decision={self.s2_decision})"
+        return f"Seed(label={self.label}, data='{self.data[:30]}...', s1={self.s1_decision}, s2={self.s2_decision}, s3={self.s3_decision})"
     
     __repr__ = __str__
 
