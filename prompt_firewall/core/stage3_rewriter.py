@@ -22,8 +22,8 @@ import requests
 import json
 
 # Import stage1_filter and stage2_scorer modules from the same core package
-from . import stage1_filter
-from . import stage2_scorer
+from . import stage1_filter as s1_module
+from . import stage2_scorer as s2_module
 
 # --- Constants ---
 
@@ -97,8 +97,16 @@ class Stage3Rewriter:
             self._load_llama3_model(llama3_model_id)
         
         # Initialize dependencies on other stages
-        self.stage1 = stage1_filter
-        self.stage2 = stage2_scorer
+        # None이면 자동으로 인스턴스 생성
+        if stage1_filter is None:
+            self.stage1 = s1_module.Stage1Filter()
+        else:
+            self.stage1 = stage1_filter
+            
+        if stage2_scorer is None:
+            self.stage2 = s2_module.Stage2Scorer()
+        else:
+            self.stage2 = stage2_scorer
         print("Stage 3 Rewriter initialization completed.")
 
     def _load_llama3_model(self, model_id: str):

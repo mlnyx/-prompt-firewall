@@ -466,31 +466,51 @@ Sentence Transformer 유사도: 0.8712
 파일: `stage1_rules.yaml`
 
 ```yaml
-whitelist_patterns:
-  - pattern: "^(What|How|When|Where|Why|Who)"
-    description: "일반적인 질문형 프롬프트"
-  - pattern: "^(Summarize|Explain|Describe)"
-    description: "교육적 요청"
-  - pattern: "^(Help|Guide|Teach)"
-    description: "도움 요청"
+# 화이트리스트 (안전한 패턴)
+whitelist:
+  - id: W001_GREETING
+    pattern: '(?i)^\s*(hello|hi|hey|안녕)\s*[\.!]*\s*$'
+    action: allow
+    message: "Simple greeting allowed"
 
-blacklist_patterns:
-  - pattern: "(exec|eval|subprocess|system)"
-    description: "프로그래밍 함수 호출"
-  - pattern: "(DROP TABLE|DELETE FROM|UPDATE|INSERT)"
-    description: "SQL 인젝션"
-  - pattern: "(\\$\\{jndi|\\$\\{java)"
-    description: "Log4J 취약점"
-  # ... 12개 규칙
+  - id: W002_SIMPLE_TASK
+    pattern: '(?i)^\s*(summarize|explain|요약|설명)\s*(this|please)?\s*$'
+    action: allow
+    message: "Simple task request allowed"
+
+  - id: W003_SHORT_DEFINITION
+    pattern: '(?i)^\s*(what|who)\s+(is|are)\s+[a-zA-Z0-9\s]{1,30}\??\s*$'
+    action: allow
+    message: "Short definition question allowed"
+
+# 블랙리스트 (프롬프트 인젝션 패턴 - 12개)
+blacklist:
+  - id: R1
+    pattern: "(?i)ignore.*instructions?"
+    action: block
+    message: "Attempt to override prior instructions"
+
+  - id: R2
+    pattern: '(?i)developer\s*mode|DAN\b|jailbreak'
+    action: block
+    message: "Attempt to enable unrestricted mode"
+
+  - id: R3
+    pattern: "(?i)bypass.*(?:safety|security|filter)"
+    action: block
+    message: "Attempt to bypass safety restrictions"
+  # ... R4-R12 (프롬프트 인젝션 관련 규칙)
 ```
 
 **규칙 추가 방법:**
 
 ```yaml
-blacklist_patterns:
+blacklist:
   # 기존 규칙들...
-  - pattern: "새로운_정규표현식"
-    description: "설명"
+  - id: R13_CUSTOM
+    pattern: "새로운_정규표현식"
+    action: block
+    message: "설명"
 ```
 
 ### Stage 2: 임계값 조정
