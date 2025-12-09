@@ -79,7 +79,8 @@ def firewall_pipeline(prompt: str, rewriter: Stage3Rewriter):
     log_data["flow_trace"].append(f"Stage 1 (Rule Filter): ESCALATE (passing to Stage 2)")
 
     # ========== Stage 2: ML 스코어러 ==========
-    s2_score = stage2_scorer.predict(normalized_prompt)
+    # Stage2Scorer.predict returns (decision, score)
+    _, s2_score = stage2_scorer.predict(normalized_prompt)
     log_data["stage2_score"] = s2_score
 
     # 허용 임계값보다 낮으면 ALLOW
@@ -113,4 +114,3 @@ def firewall_pipeline(prompt: str, rewriter: Stage3Rewriter):
         log_data["flow_trace"].append(f"Stage 3 (LLM Rewriting): Rewriting attempt -> {stage3_decision}")
             
     return log_data
-
