@@ -64,7 +64,7 @@ class Stage3Rewriter:
     Implements the Stage 3 logic for rewriting and validating prompts.
     """
     def __init__(self, stage1_filter=None, stage2_scorer=None, model_name='all-MiniLM-L6-v2', risk_threshold=0.25, similarity_threshold=0.85,
-                 use_local_llm=True, llama3_model_id="meta-llama/Llama-3-8B-Instruct"):
+                 use_local_llm=True, llama3_model_id="meta-llama/Meta-Llama-3.1-8B-Instruct"):
         """
         Initializes the Stage3Rewriter by loading the sentence-transformer model and optionally Llama 3.
         
