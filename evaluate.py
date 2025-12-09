@@ -4,7 +4,7 @@ from typing import List, Dict, Any
 
 # 리팩토링된 모듈 및 설정 임포트
 from prompt_firewall.utils.config import (
-    TEST_DATA_PATH,
+#    TEST_DATA_PATH,
     Decision,
     ASYMMETRIC_WEIGHTS,
     THRESHOLD_LOW,
@@ -84,6 +84,7 @@ def main():
     args = parser.parse_args()
     
     # 1. 데이터 로드
+    TEST_DATA_PATH = "./stage2_rewrites.txt"
     population = Population()
     population.create_population_from_file(TEST_DATA_PATH)
 
@@ -101,9 +102,9 @@ def main():
     summary_s2 = process_results(results_s2, stage='2')
 
 
-    #stage2에서 REWRITE인 것들을 추출 stage2_rewrites.txt로 저장
-    stage2_rewrites = [seed for seed in results_s2 if seed.s2_decision == Decision.REWRITE]
-    Population(seeds=stage2_rewrites).save_to_csv("stage2_rewrites.txt")
+    # #stage2에서 REWRITE인 것들을 추출 stage2_rewrites.txt로 저장
+    # stage2_rewrites = [seed for seed in results_s2 if (seed.s2_decision == Decision.REWRITE and seed.label == 'jailbreak')]
+    # Population(seeds=stage2_rewrites).save_to_csv("stage2_rewrites.txt")
 
     # # 4. Stage 3 실행 및 결과 처리 (선택사항: REWRITE만 처리)
     escalated_seeds_s3 = [seed for seed in results_s2 if hasattr(seed, 's2_decision') and seed.s2_decision == Decision.REWRITE]

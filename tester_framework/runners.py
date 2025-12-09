@@ -93,7 +93,7 @@ class Stage2LocalRunner(IFilterRunner):
 
 class Stage3LocalRunner(IFilterRunner):
     """Stage 3 리라이터를 로컬에서 실행하는 실행기"""
-    def __init__(self, use_local_llm: bool = True, llama3_model_id: str = "meta-llama/Llama-3-8B-Instruct"):
+    def __init__(self, use_local_llm: bool = True, llama3_model_id: str = "meta-llama/Meta-Llama-3.1-8B-Instruct"):
         if Stage3Rewriter:
             try:
                 self.rewriter_instance = Stage3Rewriter(
