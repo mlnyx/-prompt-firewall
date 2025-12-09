@@ -111,7 +111,7 @@ class Stage3LocalRunner(IFilterRunner):
     def run(self, seed: Seed) -> Seed:
         """Stage3Rewriter의 rewrite()를 호출하고 S3 결과를 Seed에 저장합니다.
         
-        팀원 사양: rewrite()는 dict 반환
+        rewrite()는 dict 반환
         {
             "rewrite": 재작성된_프롬프트,
             "sim_score": 유사도_점수,

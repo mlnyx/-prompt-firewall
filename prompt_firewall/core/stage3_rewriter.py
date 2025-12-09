@@ -415,7 +415,7 @@ class Stage3Rewriter:
 
     def rewrite(self, source_text: str) -> dict:
         """
-        Stage 3 파이프라인 실행 (팀원 사양 준수)
+        Stage 3 파이프라인 실행
         
         PHASE 1: 안전한 재작성 (Safety Rewrite)
           - LLM 기반 재작성
