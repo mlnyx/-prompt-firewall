@@ -16,22 +16,10 @@ from tester_framework.orchestrator import Tester
 
 def display_config(runner_s2: Stage2LocalRunner):
     """Stage 2 Scorer의 설정을 터미널에 출력합니다."""
-    print("\n=== Evaluation Configuration ===")
     if runner_s2.scorer_instance and runner_s2.scorer_instance.models_loaded:
         scorer = runner_s2.scorer_instance
-        print("--- Stage 2 Scorer Settings ---")
-        print(f"  Device: {scorer.device}")
-        print(f"  Thresholds: Low < {THRESHOLD_LOW} ({Decision.ALLOW}), High >= {THRESHOLD_HIGH} ({Decision.BLOCK})")
-        print("  Asymmetric Weights:")
-        for model, (low, high) in ASYMMETRIC_WEIGHTS.items():
-            print(f"    - {model:<10}: (Low: {low}, High: {high})")
-        print("  Model Load Status:")
-        for model, status in scorer.model_load_status.items():
-            print(f"    - {model:<10}: {'Loaded' if status else 'Failed'}")
-    else:
-        print("--- Stage 2 Scorer Settings ---")
-        print("  Scorer or models not loaded.")
-    print("==============================")
+        loaded_count = sum(1 for v in scorer.model_load_status.values() if v)
+        print(f"[Stage 2] {loaded_count}/4 models loaded | Thresholds: {THRESHOLD_LOW} ~ {THRESHOLD_HIGH}")
 
 def process_results(results: List[Seed], stage: str) -> Dict[str, int]:
     """테스트 결과를 요약합니다."""
@@ -48,17 +36,15 @@ def process_results(results: List[Seed], stage: str) -> Dict[str, int]:
 
 def print_summary(stage_name: str, summary: Dict[str, int]):
     """결과 요약을 형식에 맞게 출력합니다."""
-    print(f"\n=== Evaluation Summary {stage_name} ===")
-    if not summary:
-        print("No results to display.")
-    else:
-        for key, value in sorted(summary.items()):
-            print(f"{key}: {value}")
-    print("==========================")
+    print(f"\n[Summary S{stage_name}]")
+    for key, value in sorted(summary.items()):
+        if key != "Total Seeds":
+            print(f"  {key}: {value}")
+    print(f"  Total: {summary.get('Total Seeds', 0)}")
 
 def run_stage1(population: Population) -> List[Seed]:
     """Stage 1 테스트를 실행합니다."""
-    print("\n--- Running Stage 1 ---")
+    print("[Stage 1] 실행 중...")
     runner_s1 = Stage1LocalRunner()
     tester_s1 = Tester(population, runner_s1)
     return tester_s1.run_all()
@@ -66,13 +52,12 @@ def run_stage1(population: Population) -> List[Seed]:
 def run_stage2(escalated_seeds: List[Seed]) -> List[Seed]:
     """Stage 2 테스트를 실행합니다."""
     if not escalated_seeds:
-        print("\n--- No seeds escalated to Stage 2 ---")
         return []
     
-    print(f"\n--- Running Stage 2 on {len(escalated_seeds)} escalated seeds ---")
+    print(f"[Stage 2] 실행 중 ({len(escalated_seeds)} seeds)...")
     escalated_population = Population(seeds=escalated_seeds)
     runner_s2 = Stage2LocalRunner()
-    display_config(runner_s2) # S2 실행 직전에 설정 표시
+    display_config(runner_s2)
     
     tester_s2 = Tester(escalated_population, runner_s2)
     return tester_s2.run_all()
@@ -80,10 +65,9 @@ def run_stage2(escalated_seeds: List[Seed]) -> List[Seed]:
 def run_stage3(escalated_seeds: List[Seed], use_local_llm: bool = False) -> List[Seed]:
     """Stage 3 테스트를 실행합니다."""
     if not escalated_seeds:
-        print("\n--- No seeds escalated to Stage 3 ---")
         return []
     
-    print(f"\n--- Running Stage 3 on {len(escalated_seeds)} escalated seeds ---")
+    print(f"[Stage 3] 실행 중 ({len(escalated_seeds)} seeds) - LLM주입: {use_local_llm}")
     escalated_population = Population(seeds=escalated_seeds)
     runner_s3 = Stage3LocalRunner(use_local_llm=use_local_llm)
     
@@ -122,9 +106,9 @@ def main():
     Population(seeds=stage2_rewrites).save_to_csv("stage2_rewrites.txt")
 
     # # 4. Stage 3 실행 및 결과 처리 (선택사항: REWRITE만 처리)
-    # escalated_seeds_s3 = [seed for seed in results_s2 if hasattr(seed, 's2_decision') and seed.s2_decision == Decision.REWRITE]
-    # results_s3 = run_stage3(escalated_seeds_s3, use_local_llm=args.use_llm) if escalated_seeds_s3 else []
-    # summary_s3 = process_results(results_s3, stage='3') if results_s3 else {}
+    escalated_seeds_s3 = [seed for seed in results_s2 if hasattr(seed, 's2_decision') and seed.s2_decision == Decision.REWRITE]
+    results_s3 = run_stage3(escalated_seeds_s3, use_local_llm=args.use_llm) if escalated_seeds_s3 else []
+    summary_s3 = process_results(results_s3, stage='3') if results_s3 else {}
 
     # 5. 최종 결과 요약 출력
     print_summary("S1", summary_s1)
