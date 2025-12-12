@@ -36,11 +36,9 @@ TEST_DATA_PATH = os.path.join(DATA_DIR, "test.csv")
 STAGE1_RULES_PATH = os.path.join(PROJECT_ROOT, "stage1_rules.yaml")
 
 # ===== Stage 2: ML 스코어러 모델 경로 =====
-# ONNX 모델 경로
-PROTECTAI_PATH = os.path.join(MODEL_DIR, "protectai-deberta-v3-base")
-SENTINEL_PATH = os.path.join(MODEL_DIR, "prompt-injection-sentinel")
-
 # Hugging Face 모델 ID (온라인 다운로드)
+PROTECTAI_PATH = "protectai/deberta-v3-base-prompt-injection-v2"
+SENTINEL_PATH = "deepset/deberta-v3-base-injection"
 PIGUARD_ID = "leolee99/PIGuard"
 TESTSAVANTAI_ID = "testsavantai/prompt-injection-defender-base-v0"
 
