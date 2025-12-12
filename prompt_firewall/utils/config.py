@@ -8,13 +8,14 @@ import os
 from typing import Dict, Tuple
 
 # ===== 경로 설정 =====
-# Colab 환경 대응: __file__ 대신 현재 작업 디렉토리 기준
-if os.path.basename(os.getcwd()) == "-prompt-firewall":
-    # Colab에서 %cd로 이동한 경우
-    PROJECT_ROOT = os.getcwd()
+# __file__ 기준 3단계 상위 디렉토리 계산
+_file_based_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Colab 중복 경로 수정: /content/-prompt-firewall/-prompt-firewall → /content/-prompt-firewall
+if _file_based_root.endswith("-prompt-firewall/-prompt-firewall"):
+    PROJECT_ROOT = os.path.dirname(_file_based_root)
 else:
-    # 로컬 환경 또는 일반 실행
-    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    PROJECT_ROOT = _file_based_root
 
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 MODEL_DIR = os.path.join(PROJECT_ROOT, "models")
