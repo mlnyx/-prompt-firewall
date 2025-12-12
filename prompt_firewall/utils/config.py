@@ -81,10 +81,10 @@ STAGE2_BLOCK_THRESHOLD = 0.60
 # Stage3Rewriter 컴포넌트의 설정값
 REWRITER_CONFIG = {
     # 의미 유사도 측정에 사용할 모델
-    "similarity_model": "all-MiniLM-L6-v2",
+    "similarity_model": "all-mpnet-base-v2",
     # 재작성된 텍스트의 안전성 검사 임계값
     # Stage 3은 이미 그레이 영역 프롬프트를 받으므로 0.50으로 설정 (원래 0.25)
     "risk_threshold": 0.50,
     # 원본과 재작성 텍스트의 의미적 유사도 임계값
-    "similarity_threshold": 0.85,
+    "similarity_threshold": 0.75,
 }

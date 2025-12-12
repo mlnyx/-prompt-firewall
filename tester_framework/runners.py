@@ -1,7 +1,7 @@
 # tester_framework/runners.py
 from abc import ABC, abstractmethod
 from .core import Seed
-from prompt_firewall.utils.config import Decision
+from prompt_firewall.utils.config import Decision,  REWRITER_CONFIG
 
 # 테스트할 필터/스코어러/리라이터 로직을 임포트합니다.
 # 의존성 주입을 위해 try-except 블록을 유지합니다.
