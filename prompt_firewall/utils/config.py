@@ -11,13 +11,14 @@ from typing import Dict, Tuple
 # __file__ 기준 3단계 상위 디렉토리 계산
 _file_based_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Colab 중복 경로 수정: 마지막 -prompt-firewall까지만 유지
+# Colab 중복 경로 수정: 모든 중복 제거
 # 예: /content/-prompt-firewall/-prompt-firewall/-prompt-firewall → /content/-prompt-firewall
-parts = _file_based_root.split(os.sep)
-if "-prompt-firewall" in parts:
-    # 첫 번째 -prompt-firewall까지만 경로 구성
-    first_idx = parts.index("-prompt-firewall")
-    PROJECT_ROOT = os.sep.join(parts[:first_idx + 1])
+# 방법: -prompt-firewall/prompt_firewall 패턴을 찾아서 첫 번째 -prompt-firewall까지만 유지
+import re
+if "/-prompt-firewall" in _file_based_root:
+    # 정규식으로 첫 번째 -prompt-firewall까지만 추출
+    match = re.search(r'^(.*?/-prompt-firewall)', _file_based_root)
+    PROJECT_ROOT = match.group(1) if match else _file_based_root
 else:
     PROJECT_ROOT = _file_based_root
 
