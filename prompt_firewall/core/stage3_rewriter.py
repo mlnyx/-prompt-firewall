@@ -218,7 +218,7 @@ class Stage3Rewriter:
                     "stream": False,
                     "temperature": 0.3,
                 },
-                timeout=30
+                timeout=180
             )
             response.raise_for_status()
             result = response.json()
