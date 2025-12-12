@@ -68,18 +68,65 @@ class Stage3Rewriter:
             model_name: SentenceTransformer 모델명
             risk_threshold: Stage 3 재작성 텍스트의 안전성 임계값
             similarity_threshold: 원본과 재작성 텍스트의 의미 유사도 임계값
-            use_local_llm: 로컬 LLM 서버 사용 여부 (현재 미사용)
-            llama3_model_id: (사용하지 않음 - Ollama 사용)
+            use_local_llm: LLM 사용 필수 (False면 에러 발생)
+            llama3_model_id: (사용하지 않음 - Ollama의 llama3 사용)
         """
+        if not use_local_llm:
+            raise ValueError(
+                "[Stage 3] LLM이 필수입니다!\n"
+                "Ollama 서버를 실행하고 llama3 모델을 다운로드하세요:\n"
+                "  1. ollama serve\n"
+                "  2. ollama pull llama3\n"
+                "  3. python evaluate.py --use-llm"
+            )
+        
         self.risk_threshold = risk_threshold
         self.similarity_threshold = similarity_threshold
         self.use_local_llm = use_local_llm
         
+        # Ollama 서버 연결 테스트
+        print("[Stage 3] Ollama 서버 연결 확인 중...")
+        try:
+            response = requests.get("http://localhost:11434/api/tags", timeout=5)
+            response.raise_for_status()
+            models = response.json().get('models', [])
+            model_names = [m.get('name', '') for m in models]
+            
+            # llama3 또는 llama2 확인
+            has_llama3 = any('llama3' in name.lower() for name in model_names)
+            has_llama2 = any('llama2' in name.lower() for name in model_names)
+            
+            if has_llama3:
+                print("[Stage 3] ✓ Llama 3 모델 확인")
+                self.llm_model = "llama3"
+            elif has_llama2:
+                print("[Stage 3] ⚠️ Llama 3를 찾을 수 없어 Llama 2 사용")
+                print("[Stage 3] 권장: ollama pull llama3")
+                self.llm_model = "llama2"
+            else:
+                raise Exception(
+                    "Llama 모델을 찾을 수 없습니다.\n"
+                    "다음 명령어로 모델을 다운로드하세요:\n"
+                    "  ollama pull llama3"
+                )
+        except requests.exceptions.ConnectionError:
+            raise Exception(
+                "[Stage 3] Ollama 서버에 연결할 수 없습니다!\n"
+                "다음 명령어로 Ollama를 실행하세요:\n"
+                "  ollama serve\n"
+                "그런 다음 모델을 다운로드하세요:\n"
+                "  ollama pull llama3"
+            )
+        except Exception as e:
+            raise Exception(f"[Stage 3] Ollama 서버 확인 실패: {str(e)}")
+        
         # SentenceTransformer 로드
+        print("[Stage 3] SentenceTransformer 모델 로드 중...")
         try:
             self.similarity_model = SentenceTransformer(model_name)
+            print("[Stage 3] ✓ SentenceTransformer 로드 완료")
         except Exception as e:
-            self.similarity_model = None
+            raise Exception(f"[Stage 3] SentenceTransformer 로드 실패: {str(e)}")
         
         # Initialize dependencies on other stages
         # None이면 자동으로 인스턴스 생성
@@ -161,12 +208,12 @@ class Stage3Rewriter:
             if keyword in prompt_lower:
                 return "REWRITE_FAILED"
         
-        # Ollama Llama 2를 통한 재작성
+        # Ollama를 통한 재작성 (llama3 또는 llama2)
         try:
             response = requests.post(
                 "http://localhost:11434/api/generate",
                 json={
-                    "model": "llama2",
+                    "model": self.llm_model,  # llama3 또는 llama2
                     "prompt": f"{SYSTEM_PROMPT}\n\n<user_input>{user_prompt}</user_input>\n\nRespond with ONLY the rewritten question or REWRITE_FAILED:",
                     "stream": False,
                     "temperature": 0.3,
@@ -210,21 +257,19 @@ class Stage3Rewriter:
                 "reason": 상세_사유
             }
         """
-        if not self.similarity_model:
-            return {
-                "rewrite": SAFE_SUMMARY_MSG,
-                "sim_score": 0.0,
-                "safe_score": 0.0,
-                "contains_danger": True,
-                "final_decision": "fail",
-                "reason": "모델 로드 실패"
-            }
-
         # ===== PHASE 1: 안전한 재작성 (Safety Rewrite) =====
+        # LLM 호출 실패 시 프로그램 종료
         try:
             cleaned_text = self._invoke_llm(source_text)
         except Exception as e:
-            raise e
+            print(f"\n{'='*60}")
+            print("[Stage 3] 치명적 오류: LLM 재작성 실패")
+            print(f"{'='*60}")
+            print(f"입력 텍스트: {source_text[:100]}...")
+            print(f"오류: {str(e)}")
+            print(f"\n프로그램을 종료합니다.")
+            print(f"{'='*60}\n")
+            raise SystemExit(1)
 
         if cleaned_text == "REWRITE_FAILED":
             return {

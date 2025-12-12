@@ -21,6 +21,8 @@ torch>=2.0.0
 pandas
 scikit-learn
 matplotlib
+tqdm
+numpy
 
 #7. .safetensors 모델 로드 지원
 safetensors
