@@ -11,13 +11,14 @@ from typing import Dict, Tuple
 # __file__ 기준 3단계 상위 디렉토리 계산
 _file_based_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Colab 중복 경로 수정: 마지막 -prompt-firewall까지만 유지
+# Colab 중복 경로 수정: 모든 중복 제거
 # 예: /content/-prompt-firewall/-prompt-firewall/-prompt-firewall → /content/-prompt-firewall
-parts = _file_based_root.split(os.sep)
-if "-prompt-firewall" in parts:
-    # 첫 번째 -prompt-firewall까지만 경로 구성
-    first_idx = parts.index("-prompt-firewall")
-    PROJECT_ROOT = os.sep.join(parts[:first_idx + 1])
+# 방법: -prompt-firewall/prompt_firewall 패턴을 찾아서 첫 번째 -prompt-firewall까지만 유지
+import re
+if "/-prompt-firewall" in _file_based_root:
+    # 정규식으로 첫 번째 -prompt-firewall까지만 추출
+    match = re.search(r'^(.*?/-prompt-firewall)', _file_based_root)
+    PROJECT_ROOT = match.group(1) if match else _file_based_root
 else:
     PROJECT_ROOT = _file_based_root
 
@@ -35,11 +36,9 @@ TEST_DATA_PATH = os.path.join(DATA_DIR, "test.csv")
 STAGE1_RULES_PATH = os.path.join(PROJECT_ROOT, "stage1_rules.yaml")
 
 # ===== Stage 2: ML 스코어러 모델 경로 =====
-# ONNX 모델 경로
-PROTECTAI_PATH = os.path.join(MODEL_DIR, "protectai-deberta-v3-base")
-SENTINEL_PATH = os.path.join(MODEL_DIR, "prompt-injection-sentinel")
-
 # Hugging Face 모델 ID (온라인 다운로드)
+PROTECTAI_PATH = "protectai/deberta-v3-base-prompt-injection-v2"
+SENTINEL_PATH = "deepset/deberta-v3-base-injection"
 PIGUARD_ID = "leolee99/PIGuard"
 TESTSAVANTAI_ID = "testsavantai/prompt-injection-defender-base-v0"
 
