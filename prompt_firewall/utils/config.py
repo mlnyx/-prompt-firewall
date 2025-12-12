@@ -11,9 +11,13 @@ from typing import Dict, Tuple
 # __file__ 기준 3단계 상위 디렉토리 계산
 _file_based_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Colab 중복 경로 수정: /content/-prompt-firewall/-prompt-firewall → /content/-prompt-firewall
-if _file_based_root.endswith("-prompt-firewall/-prompt-firewall"):
-    PROJECT_ROOT = os.path.dirname(_file_based_root)
+# Colab 중복 경로 수정: 마지막 -prompt-firewall까지만 유지
+# 예: /content/-prompt-firewall/-prompt-firewall/-prompt-firewall → /content/-prompt-firewall
+parts = _file_based_root.split(os.sep)
+if "-prompt-firewall" in parts:
+    # 첫 번째 -prompt-firewall까지만 경로 구성
+    first_idx = parts.index("-prompt-firewall")
+    PROJECT_ROOT = os.sep.join(parts[:first_idx + 1])
 else:
     PROJECT_ROOT = _file_based_root
 
