@@ -1,0 +1,1 @@
+def check(text): return "ESCALATE" if "execute" not in text else "BLOCK"
