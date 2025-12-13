@@ -1,0 +1,6 @@
+timestamp,user_prompt,stage1_result,stage2_score,stage3_result,final_decision,final_output
+2025-12-13 01:09:05,"hello
+",ALLOW,-1.0000,N/A,ALLOW,"hello
+"
+2025-12-13 01:10:58,"hello im sanggwon yun nice to meet you
+",ESCALATE,0.2605,Rewriting Successful (REWRITTEN),REWRITTEN_AND_ALLOWED,"{'rewrite': 'An unexpected security issue was detected. Unable to process request.', 'sim_score': 0.0, 'safe_score': 0.332332073100682, 'contains_danger': True, 'final_decision': 'fail', 'reason': '위험도 점수(0.6677)가 임계값을 초과'}"

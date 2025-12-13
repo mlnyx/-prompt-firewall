@@ -1,0 +1,1 @@
+def predict(text): return 0.1 if "security" in text else 0.5

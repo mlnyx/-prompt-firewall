@@ -86,5 +86,5 @@ REWRITER_CONFIG = {
     # Stage 3은 이미 그레이 영역 프롬프트를 받으므로 0.50으로 설정 (원래 0.25)
     "risk_threshold": 0.50,
     # 원본과 재작성 텍스트의 의미적 유사도 임계값
-    "similarity_threshold": 0.75,
+    "similarity_threshold": 0.5,
 }

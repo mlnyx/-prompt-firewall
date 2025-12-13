@@ -93,14 +93,14 @@ class Stage2LocalRunner(IFilterRunner):
 
 class Stage3LocalRunner(IFilterRunner):
     """Stage 3 리라이터를 로컬에서 실행하는 실행기"""
-    def __init__(self, use_local_llm: bool = True, llama3_model_id: str = "meta-llama/Meta-Llama-3.1-8B-Instruct"):
+    def __init__(self, use_local_llm: bool = True, llm_model_id: str = "google/gemma-2-2b-it"):
         if Stage3Rewriter:
             try:
                 self.rewriter_instance = Stage3Rewriter(
                     stage1_filter=Stage1Filter() if Stage1Filter else None,
                     stage2_scorer=Stage2Scorer() if Stage2Scorer else None,
                     use_local_llm=use_local_llm,
-                    llama3_model_id=llama3_model_id
+                    llm_model_id=llm_model_id
                 )
             except Exception as e:
                 print(f"Warning: Failed to initialize Stage3Rewriter: {e}")
